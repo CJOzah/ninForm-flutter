@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'package:mime/mime.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() {
   runApp(const NinVerifierApp());
@@ -16,10 +18,7 @@ class NinVerifierApp extends StatelessWidget {
     return MaterialApp(
       title: 'NIN Verification',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const NinVerifierPage(),
     );
   }
@@ -43,14 +42,37 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   final _lgaController = TextEditingController();
   final _townController = TextEditingController();
   final _schoolController = TextEditingController();
+  final _middleName = TextEditingController();
+  final _placeOfBirth = TextEditingController();
+  final _lgaOfBirth = TextEditingController();
+  final _lgaOfOrigin = TextEditingController();
+  final _stateOfOrigin = TextEditingController();
+  final _motherMaiden = TextEditingController();
+  final _residentialAddress = TextEditingController();
+  final _hostelAddress = TextEditingController();
+  final _school = TextEditingController();
+  final _faculty = TextEditingController();
+  final _department = TextEditingController();
+  final _academicLevel = TextEditingController();
 
+  // File uploads
+  final Map<String, PlatformFile?> _uploads = {
+    "lgaCertificate": null,
+    "birthCertificate": null,
+    "admissionLetter": null,
+    "studentId": null,
+    "lastResult": null,
+    "passportPhoto": null,
+    "ninCard": null,
+  };
   bool _loading = false;
   String? _error;
   VerifiedProfile? _profile;
 
   // ========== CONFIG ==========
   static const String VERIFY_API_URL = ""; // your NIN API/proxy
-  static const String SUBMIT_SHEET_URL = "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
+  static const String SUBMIT_SHEET_URL =
+      "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================
 
   @override
@@ -64,6 +86,16 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
     _schoolController.dispose();
     super.dispose();
   }
+
+  final Map<String, String> _fileLabels = {
+    "lgaCertificate": "LGA of Origin Certificate",
+    "birthCertificate": "Birth Certificate",
+    "admissionLetter": "Admission Letter",
+    "studentId": "Student ID",
+    "lastResult": "Last School Result",
+    "passportPhoto": "Passport Photo *",
+    "ninCard": "NIN Card *",
+  };
 
   Future<void> _verifyNin() async {
     if (!_ninFormKey.currentState!.validate()) return;
@@ -117,35 +149,71 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       });
     }
   }
+Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
+  if (file == null || file.bytes == null) return {};
 
-  Future<void> _submitToSheet() async {
-    if (_profile == null) return;
+  final mimeType = lookupMimeType(file.name) ?? "application/octet-stream";
+
+  return {
+    "base64": base64Encode(file.bytes!), // convert Uint8List -> base64 string
+    "mimeType": mimeType,
+    "fileName": file.name,
+  };
+}
+  Future<void> _submit() async {
     if (!_detailsFormKey.currentState!.validate()) return;
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final payload = {
-        ..._profile!.toJson(),
-        "email": _emailController.text.trim(),
-        "phone": _phoneController.text.trim(),
-        "address": _addressController.text.trim(),
-        "localGovernment": _lgaController.text.trim(),
-        "town": _townController.text.trim(),
-        "school": _schoolController.text.trim(),
-      };
-
-      if (SUBMIT_SHEET_URL.isEmpty) {
-        await Future.delayed(const Duration(milliseconds: 700));
-        setState(() => _loading = false);
+    // 🔹 Check required uploads
+    final requiredFiles = ["passportPhoto", "ninCard"];
+    for (final key in requiredFiles) {
+      if (_uploads[key] == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✔️ Saved (mock)")),
+          SnackBar(content: Text("❌ Please upload ${_fileLabels[key]}")),
         );
         return;
       }
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      // Convert files to base64
+      final Map<String, String?> fileData = {};
+      _uploads.forEach((key, file) {
+        if (file != null && file.bytes != null) {
+          fileData[key] = base64Encode(file.bytes!);
+        }
+      });
+
+      final payload = {
+        "nin": _ninController.text,
+        "firstName": _profile!.firstName,
+        "lastName": _profile!.lastName,
+        "email": _emailController.text,
+        "phone": _phoneController.text,
+        "dateOfBirth": _profile!.dateOfBirth,
+        "gender": _profile!.gender,
+        "middleName": _middleName.text,
+        "placeOfBirth": _placeOfBirth.text,
+        "lgaOfBirth": _lgaOfBirth.text,
+        "lgaOfOrigin": _lgaOfOrigin.text,
+        "stateOfOrigin": _stateOfOrigin.text,
+        "motherMaidenName": _motherMaiden.text,
+        "residentialAddress": _residentialAddress.text,
+        "hostelAddress": _hostelAddress.text,
+        "school": _school.text,
+        "faculty": _faculty.text,
+        "department": _department.text,
+        "academicLevel": _academicLevel.text,
+        // 🔹 Attachments as separate fields
+  // "lgaCertificate": await encodeFileWeb(_uploads["lgaCertificate"]),
+  // "birthCertificate": await encodeFileWeb(_uploads["birthCertificate"]),
+  // "admissionLetter": await encodeFileWeb(_uploads["admissionLetter"]),
+  // "studentId": await encodeFileWeb(_uploads["studentId"]),
+  // "lastResult": await encodeFileWeb(_uploads["lastResult"]),
+  // "passportPhoto": await encodeFileWeb(_uploads["passportPhoto"]),
+  // "ninCard": await encodeFileWeb(_uploads["ninCard"]),
+      };
 
       final resp = await http.post(
         Uri.parse("$SUBMIT_SHEET_URL"),
@@ -157,17 +225,16 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
         throw Exception("Submit error: ${resp.statusCode}");
       }
 
-      setState(() => _loading = false);
       log(resp.body);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✔️ Saved to Google Sheet")),
+        const SnackBar(content: Text("✔️ Submitted successfully")),
       );
     } catch (e) {
-      if (kDebugMode) print("submit error: $e");
-      setState(() {
-        _loading = false;
-        _error = "Submission failed: $e";
-      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("❌ Submission failed: $e")));
+    } finally {
+      setState(() => _loading = false);
     }
   }
 
@@ -210,13 +277,16 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _loading ? null : _verifyNin,
-                        icon: _loading
-                            ? const SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.search),
+                        icon:
+                            _loading
+                                ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : const Icon(Icons.search),
                         label: const Text("Verify"),
                       ),
                     ],
@@ -235,8 +305,10 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                       border: Border.all(color: Colors.red.shade200),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(_error!,
-                        style: TextStyle(color: Colors.red.shade700)),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
                   ),
 
                 // Profile & form
@@ -250,7 +322,10 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                           children: [
                             _lockedField("First Name", _profile!.firstName),
                             _lockedField("Last Name", _profile!.lastName),
-                            _lockedField("Date of Birth", _profile!.dateOfBirth),
+                            _lockedField(
+                              "Date of Birth",
+                              _profile!.dateOfBirth,
+                            ),
                             _lockedField("Gender", _profile!.gender),
                             const Divider(),
                             _editableField(
@@ -286,30 +361,170 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                             _editableField(
                               "Address",
                               _addressController,
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? "Address is required" : null,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Address is required"
+                                          : null,
                             ),
                             _editableField(
                               "Local Government",
                               _lgaController,
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? "Local Government is required" : null,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Local Government is required"
+                                          : null,
                             ),
                             _editableField(
                               "Town",
                               _townController,
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? "Town is required" : null,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Town is required"
+                                          : null,
                             ),
                             _editableField(
                               "Name of School",
                               _schoolController,
-                              validator: (v) =>
-                                  v == null || v.isEmpty ? "School is required" : null,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "School is required"
+                                          : null,
                             ),
+                            const Divider(),
+                            // 🔹 Other editable fields
+                            _editableField(
+                              "Middle Name",
+                              _middleName,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Middle Name is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Place of Birth",
+                              _placeOfBirth,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Place of Birth is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "LGA of Birth",
+                              _lgaOfBirth,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "LGA of Birth is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "LGA of Origin",
+                              _lgaOfOrigin,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "LGA of Origin is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "State of Origin",
+                              _stateOfOrigin,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "State of Origin is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Mother’s Maiden Name",
+                              _motherMaiden,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Mother’s Maiden Name is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Residential Address",
+                              _residentialAddress,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Residential Address is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "School/Hostel Address",
+                              _hostelAddress,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "School/Hostel Address is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Name of School",
+                              _school,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Name of School is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Faculty",
+                              _faculty,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Faculty is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Department",
+                              _department,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Department is required"
+                                          : null,
+                            ),
+                            _editableField(
+                              "Academic Level",
+                              _academicLevel,
+                              validator:
+                                  (v) =>
+                                      v == null || v.isEmpty
+                                          ? "Academic Level is required"
+                                          : null,
+                            ),
+                            const Divider(),
+                            const Text(
+                              "📎 Attachments",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+
+                            // 🔹 File upload fields with labels
+                            _fileField(
+                              "LGA of Origin Certificate",
+                              "lgaCertificate",
+                            ),
+                            _fileField("Birth Certificate", "birthCertificate"),
+                            _fileField("Admission Letter", "admissionLetter"),
+                            _fileField("Student ID Card", "studentId"),
+                            _fileField("Last School Result", "lastResult"),
+                            _fileField("Passport Photo", "passportPhoto"),
+                            _fileField("NIN Card", "ninCard"),
+
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: _loading ? null : _submitToSheet,
+                              onPressed: _loading ? null : _submit,
                               icon: const Icon(Icons.save),
                               label: const Text("Save to Sheet"),
                             ),
@@ -325,6 +540,48 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
         ),
       ),
     );
+  }
+
+  Widget _fileField(String label, String key) {
+    final file = _uploads[key];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              file?.name ?? "$label not selected",
+              style: TextStyle(
+                color: file == null ? Colors.grey : Colors.black,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => _pickFile(key),
+            child: Text(file == null ? "Upload" : "Change"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFile(String key) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        withData: true, // ensures we get file bytes
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          _uploads[key] = result.files.first;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("❌ Failed to pick file: $e")));
+    }
   }
 
   Widget _lockedField(String label, String? value) {
