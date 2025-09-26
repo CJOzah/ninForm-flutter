@@ -149,17 +149,19 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       });
     }
   }
-Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
-  if (file == null || file.bytes == null) return {};
 
-  final mimeType = lookupMimeType(file.name) ?? "application/octet-stream";
+  Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
+    if (file == null || file.bytes == null) return {};
 
-  return {
-    "base64": base64Encode(file.bytes!), // convert Uint8List -> base64 string
-    "mimeType": mimeType,
-    "fileName": file.name,
-  };
-}
+    final mimeType = lookupMimeType(file.name) ?? "application/octet-stream";
+
+    return {
+      "base64": base64Encode(file.bytes!), // convert Uint8List -> base64 string
+      "mimeType": mimeType,
+      "fileName": file.name,
+    };
+  }
+
   Future<void> _submit() async {
     if (!_detailsFormKey.currentState!.validate()) return;
 
@@ -206,13 +208,13 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
         "department": _department.text,
         "academicLevel": _academicLevel.text,
         // 🔹 Attachments as separate fields
-  // "lgaCertificate": await encodeFileWeb(_uploads["lgaCertificate"]),
-  // "birthCertificate": await encodeFileWeb(_uploads["birthCertificate"]),
-  // "admissionLetter": await encodeFileWeb(_uploads["admissionLetter"]),
-  // "studentId": await encodeFileWeb(_uploads["studentId"]),
-  // "lastResult": await encodeFileWeb(_uploads["lastResult"]),
-  // "passportPhoto": await encodeFileWeb(_uploads["passportPhoto"]),
-  // "ninCard": await encodeFileWeb(_uploads["ninCard"]),
+        // "lgaCertificate": await encodeFileWeb(_uploads["lgaCertificate"]),
+        // "birthCertificate": await encodeFileWeb(_uploads["birthCertificate"]),
+        // "admissionLetter": await encodeFileWeb(_uploads["admissionLetter"]),
+        // "studentId": await encodeFileWeb(_uploads["studentId"]),
+        // "lastResult": await encodeFileWeb(_uploads["lastResult"]),
+        // "passportPhoto": await encodeFileWeb(_uploads["passportPhoto"]),
+        // "ninCard": await encodeFileWeb(_uploads["ninCard"]),
       };
 
       final resp = await http.post(
@@ -312,14 +314,14 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
                   ),
 
                 // Profile & form
-                if (_profile != null) ...[
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Form(
-                        key: _detailsFormKey,
-                        child: Column(
-                          children: [
+                const SizedBox(height: 16),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: _detailsFormKey,
+                      child: Column(
+                        children: [
+                          if (_profile != null) ...[
                             _lockedField("First Name", _profile!.firstName),
                             _lockedField("Last Name", _profile!.lastName),
                             _lockedField(
@@ -328,212 +330,212 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
                             ),
                             _lockedField("Gender", _profile!.gender),
                             const Divider(),
-                            _editableField(
-                              "Email",
-                              _emailController,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return "Email is required";
-                                }
-                                final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                                if (!regex.hasMatch(v)) {
-                                  return "Invalid email";
-                                }
-                                return null;
-                              },
-                            ),
-                            _editableField(
-                              "Phone Number",
-                              _phoneController,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return "Phone number is required";
-                                }
-                                if (v.length < 10 || v.length > 15) {
-                                  return "Phone must be 10-15 digits";
-                                }
-                                if (int.tryParse(v) == null) {
-                                  return "Phone must be digits only";
-                                }
-                                return null;
-                              },
-                            ),
-                            _editableField(
-                              "Address",
-                              _addressController,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Address is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Local Government",
-                              _lgaController,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Local Government is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Town",
-                              _townController,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Town is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Name of School",
-                              _schoolController,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "School is required"
-                                          : null,
-                            ),
-                            const Divider(),
-                            // 🔹 Other editable fields
-                            _editableField(
-                              "Middle Name",
-                              _middleName,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Middle Name is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Place of Birth",
-                              _placeOfBirth,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Place of Birth is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "LGA of Birth",
-                              _lgaOfBirth,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "LGA of Birth is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "LGA of Origin",
-                              _lgaOfOrigin,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "LGA of Origin is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "State of Origin",
-                              _stateOfOrigin,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "State of Origin is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Mother’s Maiden Name",
-                              _motherMaiden,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Mother’s Maiden Name is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Residential Address",
-                              _residentialAddress,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Residential Address is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "School/Hostel Address",
-                              _hostelAddress,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "School/Hostel Address is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Name of School",
-                              _school,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Name of School is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Faculty",
-                              _faculty,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Faculty is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Department",
-                              _department,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Department is required"
-                                          : null,
-                            ),
-                            _editableField(
-                              "Academic Level",
-                              _academicLevel,
-                              validator:
-                                  (v) =>
-                                      v == null || v.isEmpty
-                                          ? "Academic Level is required"
-                                          : null,
-                            ),
-                            const Divider(),
-                            const Text(
-                              "📎 Attachments",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-
-                            // 🔹 File upload fields with labels
-                            _fileField(
-                              "LGA of Origin Certificate",
-                              "lgaCertificate",
-                            ),
-                            _fileField("Birth Certificate", "birthCertificate"),
-                            _fileField("Admission Letter", "admissionLetter"),
-                            _fileField("Student ID Card", "studentId"),
-                            _fileField("Last School Result", "lastResult"),
-                            _fileField("Passport Photo", "passportPhoto"),
-                            _fileField("NIN Card", "ninCard"),
-
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _loading ? null : _submit,
-                              icon: const Icon(Icons.save),
-                              label: const Text("Save to Sheet"),
-                            ),
                           ],
-                        ),
+                          _editableField(
+                            "Email",
+                            _emailController,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) {
+                                return "Email is required";
+                              }
+                              final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                              if (!regex.hasMatch(v)) {
+                                return "Invalid email";
+                              }
+                              return null;
+                            },
+                          ),
+                          _editableField(
+                            "Phone Number",
+                            _phoneController,
+                            validator: (v) {
+                              if (v == null || v.isEmpty) {
+                                return "Phone number is required";
+                              }
+                              if (v.length < 10 || v.length > 15) {
+                                return "Phone must be 10-15 digits";
+                              }
+                              if (int.tryParse(v) == null) {
+                                return "Phone must be digits only";
+                              }
+                              return null;
+                            },
+                          ),
+                          _editableField(
+                            "Address",
+                            _addressController,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Address is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Local Government",
+                            _lgaController,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Local Government is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Town",
+                            _townController,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Town is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Name of School",
+                            _schoolController,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "School is required"
+                                        : null,
+                          ),
+                          const Divider(),
+                          // 🔹 Other editable fields
+                          _editableField(
+                            "Middle Name",
+                            _middleName,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Middle Name is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Place of Birth",
+                            _placeOfBirth,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Place of Birth is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "LGA of Birth",
+                            _lgaOfBirth,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "LGA of Birth is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "LGA of Origin",
+                            _lgaOfOrigin,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "LGA of Origin is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "State of Origin",
+                            _stateOfOrigin,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "State of Origin is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Mother’s Maiden Name",
+                            _motherMaiden,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Mother’s Maiden Name is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Residential Address",
+                            _residentialAddress,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Residential Address is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "School/Hostel Address",
+                            _hostelAddress,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "School/Hostel Address is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Name of School",
+                            _school,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Name of School is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Faculty",
+                            _faculty,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Faculty is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Department",
+                            _department,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Department is required"
+                                        : null,
+                          ),
+                          _editableField(
+                            "Academic Level",
+                            _academicLevel,
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Academic Level is required"
+                                        : null,
+                          ),
+                          const Divider(),
+                          const Text(
+                            "📎 Attachments",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+
+                          // 🔹 File upload fields with labels
+                          _fileField(
+                            "LGA of Origin Certificate",
+                            "lgaCertificate",
+                          ),
+                          _fileField("Birth Certificate", "birthCertificate"),
+                          _fileField("Admission Letter", "admissionLetter"),
+                          _fileField("Student ID Card", "studentId"),
+                          _fileField("Last School Result", "lastResult"),
+                          _fileField("Passport Photo", "passportPhoto"),
+                          _fileField("NIN Card", "ninCard"),
+
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _loading ? null : _submit,
+                            icon: const Icon(Icons.save),
+                            label: const Text("Save to Sheet"),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           ),
