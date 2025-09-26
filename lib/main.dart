@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -147,7 +148,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       }
 
       final resp = await http.post(
-        Uri.parse("https://cors-anywhere.herokuapp.com/$SUBMIT_SHEET_URL"),
+        Uri.parse("$SUBMIT_SHEET_URL"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
@@ -157,6 +158,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       }
 
       setState(() => _loading = false);
+      log(resp.body);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✔️ Saved to Google Sheet")),
       );
