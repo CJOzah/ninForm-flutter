@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 void main() {
   runApp(const NinVerifierApp());
@@ -149,96 +150,119 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       });
     }
   }
+ 
+ Future<void> _submit() async {
+  if (!_detailsFormKey.currentState!.validate()) return;
 
-  Future<Map<String, dynamic>> encodeFileWeb(PlatformFile? file) async {
-    if (file == null || file.bytes == null) return {};
+  setState(() => _loading = true);
 
-    final mimeType = lookupMimeType(file.name) ?? "application/octet-stream";
+  try {
+    // Convert files to base64
+    final Map<String, dynamic> fileData = {};
+    for (final entry in _uploads.entries) {
+      if (entry.value != null && entry.value!.bytes != null) {
+        fileData[entry.key] = {
+          "base64": base64Encode(entry.value!.bytes!),
+          "fileName": entry.value!.name,
+          "mimeType": entry.value!.extension == "pdf"
+              ? "application/pdf"
+              : "image/jpeg"
+        };
+      }
+    }
 
-    return {
-      "base64": base64Encode(file.bytes!), // convert Uint8List -> base64 string
-      "mimeType": mimeType,
-      "fileName": file.name,
+    final payload = {
+      "nin": _ninController.text,
+      "firstName": _profile!.firstName,
+      "lastName": _profile!.lastName,
+      "email": _emailController.text,
+      "phone": _phoneController.text,
+      "dateOfBirth": _profile!.dateOfBirth,
+      "gender": _profile!.gender,
+      "middleName": _middleName.text,
+      "placeOfBirth": _placeOfBirth.text,
+      "lgaOfBirth": _lgaOfBirth.text,
+      "lgaOfOrigin": _lgaOfOrigin.text,
+      "stateOfOrigin": _stateOfOrigin.text,
+      "motherMaidenName": _motherMaiden.text,
+      "residentialAddress": _residentialAddress.text,
+      "hostelAddress": _hostelAddress.text,
+      "school": _school.text,
+      "faculty": _faculty.text,
+      "department": _department.text,
+      "academicLevel": _academicLevel.text,
+
+  "passportPhoto": _uploads["passportPhoto"] != null
+      ? await encodeFileWeb(_uploads["passportPhoto"]!)
+      : null,
+  "ninCard": _uploads["ninCard"] != null
+      ? await encodeFileWeb(_uploads["ninCard"]!)
+      : null,
+
+      "lgaCertificate": _uploads["lgaCertificate"] != null
+      ? await encodeFileWeb(_uploads["lgaCertificate"]!)
+      : null,
+      "birthCertificate": _uploads["birthCertificate"] != null
+      ? await encodeFileWeb(_uploads["birthCertificate"]!)
+      : null,
+      "admissionLetter": _uploads["admissionLetter"] != null
+      ? await encodeFileWeb(_uploads["admissionLetter"]!)
+      : null,
+      "studentId": _uploads["studentId"] != null
+      ? await encodeFileWeb(_uploads["studentId"]!)
+      : null,
+      "lastResult": _uploads["lastResult"] != null
+      ? await encodeFileWeb(_uploads["lastResult"]!)
+      : null, 
     };
-  }
 
-  Future<void> _submit() async {
-    if (!_detailsFormKey.currentState!.validate()) return;
+    final resp = await http.post(
+      Uri.parse("$SUBMIT_SHEET_URL"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
 
-    // 🔹 Check required uploads
-    final requiredFiles = ["passportPhoto", "ninCard"];
-    for (final key in requiredFiles) {
-      if (_uploads[key] == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ Please upload ${_fileLabels[key]}")),
-        );
-        return;
-      }
+    if (resp.statusCode != 200) {
+      throw Exception("Submit error: ${resp.statusCode}");
     }
 
-    setState(() => _loading = true);
-
-    try {
-      // Convert files to base64
-      final Map<String, String?> fileData = {};
-      _uploads.forEach((key, file) {
-        if (file != null && file.bytes != null) {
-          fileData[key] = base64Encode(file.bytes!);
-        }
-      });
-
-      final payload = {
-        "nin": _ninController.text,
-        "firstName": _profile!.firstName,
-        "lastName": _profile!.lastName,
-        "email": _emailController.text,
-        "phone": _phoneController.text,
-        "dateOfBirth": _profile!.dateOfBirth,
-        "gender": _profile!.gender,
-        "middleName": _middleName.text,
-        "placeOfBirth": _placeOfBirth.text,
-        "lgaOfBirth": _lgaOfBirth.text,
-        "lgaOfOrigin": _lgaOfOrigin.text,
-        "stateOfOrigin": _stateOfOrigin.text,
-        "motherMaidenName": _motherMaiden.text,
-        "residentialAddress": _residentialAddress.text,
-        "hostelAddress": _hostelAddress.text,
-        "school": _school.text,
-        "faculty": _faculty.text,
-        "department": _department.text,
-        "academicLevel": _academicLevel.text,
-        // 🔹 Attachments as separate fields
-        // "lgaCertificate": await encodeFileWeb(_uploads["lgaCertificate"]),
-        // "birthCertificate": await encodeFileWeb(_uploads["birthCertificate"]),
-        // "admissionLetter": await encodeFileWeb(_uploads["admissionLetter"]),
-        // "studentId": await encodeFileWeb(_uploads["studentId"]),
-        // "lastResult": await encodeFileWeb(_uploads["lastResult"]),
-        // "passportPhoto": await encodeFileWeb(_uploads["passportPhoto"]),
-        // "ninCard": await encodeFileWeb(_uploads["ninCard"]),
-      };
-
-      final resp = await http.post(
-        Uri.parse("$SUBMIT_SHEET_URL"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-
-      if (resp.statusCode != 200) {
-        throw Exception("Submit error: ${resp.statusCode}");
-      }
-
-      log(resp.body);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✔️ Submitted successfully")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ Submission failed: $e")));
-    } finally {
-      setState(() => _loading = false);
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("✔️ Submitted successfully")),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("❌ Submission failed: $e")),
+    );
+  } finally {
+    setState(() => _loading = false);
   }
+}
+
+
+Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
+  Uint8List? compressedBytes;
+
+  // Only compress images, not PDFs/docs
+  if (file.extension?.toLowerCase() == "jpg" ||
+      file.extension?.toLowerCase() == "jpeg" ||
+      file.extension?.toLowerCase() == "png") {
+    compressedBytes = await FlutterImageCompress.compressWithList(
+      file.bytes!, 
+      quality: 40,     // 0-100, lower = smaller file
+    );
+  } else {
+    compressedBytes = file.bytes; // leave PDFs untouched
+  }
+
+  return {
+    "base64": base64Encode(compressedBytes!),
+    "fileName": file.name,
+    "mimeType": file.extension == "pdf"
+        ? "application/pdf"
+        : "image/jpeg"
+  };
+}
+
 
   @override
   Widget build(BuildContext context) {
