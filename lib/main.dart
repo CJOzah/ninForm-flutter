@@ -4,8 +4,7 @@ import 'package:mime/mime.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:file_picker/file_picker.dart'; 
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:file_picker/file_picker.dart';  
 
 Future<void> main() async { 
   runApp(const NinVerifierApp());
@@ -66,7 +65,7 @@ final _emailController = TextEditingController();
   // ========== CONFIG ==========
   static const String VERIFY_API_URL = 
   
-      "https://nin-proxy-1.onrender.com/checkNin"; // your NIN API/proxy
+      "https://nin-proxy-1.onrender.com/checkSandboxNin"; // your NIN API/proxy
   static const String SUBMIT_SHEET_URL = 
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================
@@ -239,8 +238,7 @@ final _emailController = TextEditingController();
                 : null,
       };
 
-
-log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toStringAsFixed(2)} MB");
+ 
       final resp = await http.post(
         Uri.parse("$SUBMIT_SHEET_URL"),
         headers: {"Content-Type": "application/json"},
@@ -265,18 +263,9 @@ log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toS
 
   Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
     Uint8List? compressedBytes;
-
-    // Only compress images, not PDFs/docs
-    if (file.extension?.toLowerCase() == "jpg" ||
-        file.extension?.toLowerCase() == "jpeg" ||
-        file.extension?.toLowerCase() == "png") {
-      compressedBytes = await FlutterImageCompress.compressWithList(
-        file.bytes!,
-        quality: 40, // 0-100, lower = smaller file
-      );
-    } else {
+ 
       compressedBytes = file.bytes; // leave PDFs untouched
-    }
+    
 
     return {
       "base64": base64Encode(compressedBytes!),
