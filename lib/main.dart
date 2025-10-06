@@ -71,7 +71,8 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   VerifiedProfile? _profile;
 
   // ========== CONFIG ==========
-  static const String VERIFY_API_URL = ""; // your NIN API/proxy
+  static const String VERIFY_API_URL = 
+      "https://api.sandbox.youverify.co/v2/api/identity/ng/nin"; // your NIN API/proxy
   static const String SUBMIT_SHEET_URL =
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================
@@ -119,9 +120,15 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
             firstName: "John",
             lastName: "Doe",
             dateOfBirth: "1990-01-01",
+            email: "jj@qa.team",
+            mobile: "09055453423",
+            middleName: "eric",
+            birthLGA: "Ughelli South",
+            birthState: "Delta State",
             gender: "Male",
             verified: true,
           );
+          log("profile ${_profile!.toJson()}");
           _loading = false;
         });
         return;
@@ -129,17 +136,36 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
 
       final resp = await http.post(
         Uri.parse(VERIFY_API_URL),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"nin": nin}),
+        headers: { 
+          "token": "8Je8yM3w.vviciewYgi6zYMhhGRCsz8Ysc5Tm0vM1jC5h",
+        },
+        body: jsonEncode({
+          "id": nin,
+          "premiumNin": true,
+          "isSubjectConsent": true,
+        }),
       );
 
       if (resp.statusCode != 200) {
         throw Exception("API error: ${resp.statusCode}");
       }
+      log("NIN res ${resp.body}");
 
       final data = jsonDecode(resp.body);
       setState(() {
+        if (VerifiedProfile.fromJson(
+              data,
+            ).birthState!.toLowerCase().contains("delta") ==
+            false) {
+          _loading = false;
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("You do not qualify")));
+          return;
+        }
         _profile = VerifiedProfile.fromJson(data);
+
         _loading = false;
       });
     } catch (e) {
@@ -150,119 +176,123 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       });
     }
   }
- 
- Future<void> _submit() async {
-  if (!_detailsFormKey.currentState!.validate()) return;
 
-  setState(() => _loading = true);
+  Future<void> _submit() async {
+    if (!_detailsFormKey.currentState!.validate()) return;
 
-  try {
-    // Convert files to base64
-    final Map<String, dynamic> fileData = {};
-    for (final entry in _uploads.entries) {
-      if (entry.value != null && entry.value!.bytes != null) {
-        fileData[entry.key] = {
-          "base64": base64Encode(entry.value!.bytes!),
-          "fileName": entry.value!.name,
-          "mimeType": entry.value!.extension == "pdf"
-              ? "application/pdf"
-              : "image/jpeg"
-        };
+    setState(() => _loading = true);
+
+    try {
+      // Convert files to base64
+      final Map<String, dynamic> fileData = {};
+      for (final entry in _uploads.entries) {
+        if (entry.value != null && entry.value!.bytes != null) {
+          fileData[entry.key] = {
+            "base64": base64Encode(entry.value!.bytes!),
+            "fileName": entry.value!.name,
+            "mimeType":
+                entry.value!.extension == "pdf"
+                    ? "application/pdf"
+                    : "image/jpeg",
+          };
+        }
       }
+
+      final payload = {
+        "nin": _ninController.text,
+        "firstName": _profile!.firstName,
+        "middleName": _profile!.middleName,
+        "lastName": _profile!.lastName,
+        "email": _emailController.text,
+        "phone": _phoneController.text,
+        "dateOfBirth": _profile!.dateOfBirth,
+        "gender": _profile!.gender,
+        "placeOfBirth": _placeOfBirth.text,
+        "lgaOfBirth": _lgaOfBirth.text,
+        "lgaOfOrigin": _lgaOfOrigin.text,
+        "stateOfOrigin": _stateOfOrigin.text,
+        "motherMaidenName": _motherMaiden.text,
+        "residentialAddress": _residentialAddress.text,
+        "hostelAddress": _hostelAddress.text,
+        "school": _school.text,
+        "faculty": _faculty.text,
+        "department": _department.text,
+        "academicLevel": _academicLevel.text,
+
+        "passportPhoto":
+            _uploads["passportPhoto"] != null
+                ? await encodeFileWeb(_uploads["passportPhoto"]!)
+                : null,
+        "ninCard":
+            _uploads["ninCard"] != null
+                ? await encodeFileWeb(_uploads["ninCard"]!)
+                : null,
+
+        "lgaCertificate":
+            _uploads["lgaCertificate"] != null
+                ? await encodeFileWeb(_uploads["lgaCertificate"]!)
+                : null,
+        "birthCertificate":
+            _uploads["birthCertificate"] != null
+                ? await encodeFileWeb(_uploads["birthCertificate"]!)
+                : null,
+        "admissionLetter":
+            _uploads["admissionLetter"] != null
+                ? await encodeFileWeb(_uploads["admissionLetter"]!)
+                : null,
+        "studentId":
+            _uploads["studentId"] != null
+                ? await encodeFileWeb(_uploads["studentId"]!)
+                : null,
+        "lastResult":
+            _uploads["lastResult"] != null
+                ? await encodeFileWeb(_uploads["lastResult"]!)
+                : null,
+      };
+
+      final resp = await http.post(
+        Uri.parse("$SUBMIT_SHEET_URL"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
+
+      if (resp.statusCode != 200) {
+        throw Exception("Submit error: ${resp.statusCode}");
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✔️ Submitted successfully")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("❌ Submission failed: $e")));
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
+    Uint8List? compressedBytes;
+
+    // Only compress images, not PDFs/docs
+    if (file.extension?.toLowerCase() == "jpg" ||
+        file.extension?.toLowerCase() == "jpeg" ||
+        file.extension?.toLowerCase() == "png") {
+      compressedBytes = await FlutterImageCompress.compressWithList(
+        file.bytes!,
+        quality: 40, // 0-100, lower = smaller file
+      );
+    } else {
+      compressedBytes = file.bytes; // leave PDFs untouched
     }
 
-    final payload = {
-      "nin": _ninController.text,
-      "firstName": _profile!.firstName,
-      "lastName": _profile!.lastName,
-      "email": _emailController.text,
-      "phone": _phoneController.text,
-      "dateOfBirth": _profile!.dateOfBirth,
-      "gender": _profile!.gender,
-      "middleName": _middleName.text,
-      "placeOfBirth": _placeOfBirth.text,
-      "lgaOfBirth": _lgaOfBirth.text,
-      "lgaOfOrigin": _lgaOfOrigin.text,
-      "stateOfOrigin": _stateOfOrigin.text,
-      "motherMaidenName": _motherMaiden.text,
-      "residentialAddress": _residentialAddress.text,
-      "hostelAddress": _hostelAddress.text,
-      "school": _school.text,
-      "faculty": _faculty.text,
-      "department": _department.text,
-      "academicLevel": _academicLevel.text,
-
-  "passportPhoto": _uploads["passportPhoto"] != null
-      ? await encodeFileWeb(_uploads["passportPhoto"]!)
-      : null,
-  "ninCard": _uploads["ninCard"] != null
-      ? await encodeFileWeb(_uploads["ninCard"]!)
-      : null,
-
-      "lgaCertificate": _uploads["lgaCertificate"] != null
-      ? await encodeFileWeb(_uploads["lgaCertificate"]!)
-      : null,
-      "birthCertificate": _uploads["birthCertificate"] != null
-      ? await encodeFileWeb(_uploads["birthCertificate"]!)
-      : null,
-      "admissionLetter": _uploads["admissionLetter"] != null
-      ? await encodeFileWeb(_uploads["admissionLetter"]!)
-      : null,
-      "studentId": _uploads["studentId"] != null
-      ? await encodeFileWeb(_uploads["studentId"]!)
-      : null,
-      "lastResult": _uploads["lastResult"] != null
-      ? await encodeFileWeb(_uploads["lastResult"]!)
-      : null, 
+    return {
+      "base64": base64Encode(compressedBytes!),
+      "fileName": file.name,
+      "mimeType": file.extension == "pdf" ? "application/pdf" : "image/jpeg",
     };
-
-    final resp = await http.post(
-      Uri.parse("$SUBMIT_SHEET_URL"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(payload),
-    );
-
-    if (resp.statusCode != 200) {
-      throw Exception("Submit error: ${resp.statusCode}");
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("✔️ Submitted successfully")),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("❌ Submission failed: $e")),
-    );
-  } finally {
-    setState(() => _loading = false);
   }
-}
-
-
-Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
-  Uint8List? compressedBytes;
-
-  // Only compress images, not PDFs/docs
-  if (file.extension?.toLowerCase() == "jpg" ||
-      file.extension?.toLowerCase() == "jpeg" ||
-      file.extension?.toLowerCase() == "png") {
-    compressedBytes = await FlutterImageCompress.compressWithList(
-      file.bytes!, 
-      quality: 40,     // 0-100, lower = smaller file
-    );
-  } else {
-    compressedBytes = file.bytes; // leave PDFs untouched
-  }
-
-  return {
-    "base64": base64Encode(compressedBytes!),
-    "fileName": file.name,
-    "mimeType": file.extension == "pdf"
-        ? "application/pdf"
-        : "image/jpeg"
-  };
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -353,38 +383,17 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
                               _profile!.dateOfBirth,
                             ),
                             _lockedField("Gender", _profile!.gender),
+                            _lockedField("Email", _profile!.email),
+                            _lockedField("Phone Number", _profile!.mobile),
+                            // 🔹 Other editable fields
+                            _lockedField("Middle Name", _profile!.middleName),
+                            _lockedField("LGA of Birth", _profile!.birthLGA),
+                            _lockedField(
+                              "State of Origin",
+                              _profile!.birthState,
+                            ),
                             const Divider(),
                           ],
-                          _editableField(
-                            "Email",
-                            _emailController,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return "Email is required";
-                              }
-                              final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                              if (!regex.hasMatch(v)) {
-                                return "Invalid email";
-                              }
-                              return null;
-                            },
-                          ),
-                          _editableField(
-                            "Phone Number",
-                            _phoneController,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return "Phone number is required";
-                              }
-                              if (v.length < 10 || v.length > 15) {
-                                return "Phone must be 10-15 digits";
-                              }
-                              if (int.tryParse(v) == null) {
-                                return "Phone must be digits only";
-                              }
-                              return null;
-                            },
-                          ),
                           _editableField(
                             "Address",
                             _addressController,
@@ -392,15 +401,6 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
                                 (v) =>
                                     v == null || v.isEmpty
                                         ? "Address is required"
-                                        : null,
-                          ),
-                          _editableField(
-                            "Local Government",
-                            _lgaController,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "Local Government is required"
                                         : null,
                           ),
                           _editableField(
@@ -422,16 +422,6 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
                                         : null,
                           ),
                           const Divider(),
-                          // 🔹 Other editable fields
-                          _editableField(
-                            "Middle Name",
-                            _middleName,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "Middle Name is required"
-                                        : null,
-                          ),
                           _editableField(
                             "Place of Birth",
                             _placeOfBirth,
@@ -442,30 +432,12 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
                                         : null,
                           ),
                           _editableField(
-                            "LGA of Birth",
-                            _lgaOfBirth,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "LGA of Birth is required"
-                                        : null,
-                          ),
-                          _editableField(
                             "LGA of Origin",
                             _lgaOfOrigin,
                             validator:
                                 (v) =>
                                     v == null || v.isEmpty
                                         ? "LGA of Origin is required"
-                                        : null,
-                          ),
-                          _editableField(
-                            "State of Origin",
-                            _stateOfOrigin,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "State of Origin is required"
                                         : null,
                           ),
                           _editableField(
@@ -648,14 +620,24 @@ Future<Map<String, dynamic>> encodeFileWeb(PlatformFile file) async {
 class VerifiedProfile {
   final String? nin;
   final String? firstName;
+  final String? middleName;
   final String? lastName;
   final String? dateOfBirth;
   final String? gender;
+  final String? mobile;
+  final String? email;
+  final String? birthState;
+  final String? birthLGA;
   final bool verified;
 
   VerifiedProfile({
     this.nin,
     this.firstName,
+    this.mobile,
+    this.email,
+    this.birthState,
+    this.birthLGA,
+    this.middleName,
     this.lastName,
     this.dateOfBirth,
     this.gender,
@@ -664,12 +646,19 @@ class VerifiedProfile {
 
   factory VerifiedProfile.fromJson(Map<String, dynamic> json) {
     return VerifiedProfile(
-      nin: json['nin']?.toString(),
-      firstName: json['firstName']?.toString(),
+      nin: json["idNumber"]?.toString(),
+      firstName: json["firstName"]?.toString(),
+      middleName: json["middleName"]?.toString(),
+      birthLGA: json["birthLGA"]?.toString(),
+      birthState: json["birthState"]?.toString(),
+      email: json["email"]?.toString(),
+      mobile: json["mobile"]?.toString(),
       lastName: json['lastName']?.toString(),
-      dateOfBirth: json['dateOfBirth']?.toString(),
-      gender: json['gender']?.toString(),
-      verified: json['verified'] == true || json['status'] == "verified",
+      dateOfBirth: json["date0fBirth"]?.toString(),
+      gender: json["gender"]?.toString(),
+      verified:
+          json['allValidationPassed'] == true ||
+          json['status'] == "allValidationPassed",
     );
   }
 
@@ -681,6 +670,11 @@ class VerifiedProfile {
       "dateOfBirth": dateOfBirth,
       "gender": gender,
       "verified": verified,
+      "middleName": middleName,
+      "birthLGA": birthLGA,
+      "birthState": birthState,
+      "email": email,
+      "mobile": mobile,
     };
   }
 }
