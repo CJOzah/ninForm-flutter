@@ -122,8 +122,7 @@ final _emailController = TextEditingController();
         });
         return;
       }
-
-      log("Request ${VERIFY_API_URL}");
+ 
 
       final resp = await http.post(
         Uri.parse(VERIFY_API_URL),
@@ -136,9 +135,13 @@ final _emailController = TextEditingController();
       );
 
       if (resp.statusCode != 200) {
-        throw Exception("API error: ${resp.statusCode}");
-      }
-      log("NIN res ${resp.body}");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("${jsonDecode(resp.body)['message']}")));
+         return;
+       
+      } 
 
       final data = jsonDecode(resp.body)['data'];
       setState(() {
