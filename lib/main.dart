@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const NinVerifierApp());
 }
 
@@ -71,7 +73,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   VerifiedProfile? _profile;
 
   // ========== CONFIG ==========
-  static const String VERIFY_API_URL = 
+  static const String VERIFY_API_URL =
       "https://api.sandbox.youverify.co/v2/api/identity/ng/nin"; // your NIN API/proxy
   static const String SUBMIT_SHEET_URL =
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
@@ -100,6 +102,8 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   };
 
   Future<void> _verifyNin() async {
+    final apiKey = dotenv.env['NINTEST'];
+
     if (!_ninFormKey.currentState!.validate()) return;
 
     setState(() {
@@ -134,11 +138,11 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
         return;
       }
 
+      log("Request ${VERIFY_API_URL}");
+
       final resp = await http.post(
         Uri.parse(VERIFY_API_URL),
-        headers: { 
-          "token": "8Je8yM3w.vviciewYgi6zYMhhGRCsz8Ysc5Tm0vM1jC5h",
-        },
+        headers: {"Content-Type": "application/json", "token": apiKey!},
         body: jsonEncode({
           "id": nin,
           "premiumNin": true,
