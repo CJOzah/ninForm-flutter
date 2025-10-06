@@ -65,7 +65,7 @@ final _emailController = TextEditingController();
   // ========== CONFIG ==========
   static const String VERIFY_API_URL = 
   
-      "https://nin-proxy-1.onrender.com/checkSandboxNin"; // your NIN API/proxy
+      "https://nin-proxy-1.onrender.com/checkNin"; // your NIN API/proxy
   static const String SUBMIT_SHEET_URL = 
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================

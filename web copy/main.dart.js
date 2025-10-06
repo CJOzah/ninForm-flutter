@@ -73275,8 +73275,8 @@ s=p}while(true)switch(s){case 0:if(!n.d.gG().tg()){s=1
 break}n.af(new A.aca(n))
 m=B.c.n2(n.r.a.a)
 p=4
-A.ak6("Request https://nin-proxy-1.onrender.com/checkSandboxNin")
-i=A.fj("https://nin-proxy-1.onrender.com/checkSandboxNin")
+A.ak6("Request https://nin-proxy-1.onrender.com/checkNin")
+i=A.fj("https://nin-proxy-1.onrender.com/checkNin")
 h=t.N
 g=A.ad(["Content-Type","application/json"],h,h)
 s=7
