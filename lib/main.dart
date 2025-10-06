@@ -4,12 +4,10 @@ import 'package:mime/mime.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:file_picker/file_picker.dart'; 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
-Future<void> main() async {
-  await dotenv.load(fileName: ".env");
+Future<void> main() async { 
   runApp(const NinVerifierApp());
 }
 
@@ -91,8 +89,7 @@ final _emailController = TextEditingController();
     "ninCard": "NIN Card *",
   };
 
-  Future<void> _verifyNin() async {
-    final apiKey = dotenv.env['NINTEST'];
+  Future<void> _verifyNin() async { 
 
     if (!_ninFormKey.currentState!.validate()) return;
 
