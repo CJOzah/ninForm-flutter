@@ -38,10 +38,10 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   final _ninFormKey = GlobalKey<FormState>();
   final _detailsFormKey = GlobalKey<FormState>();
 
+final _emailController = TextEditingController();
   final _ninController = TextEditingController(); 
   final _addressController = TextEditingController(); 
-  final _townController = TextEditingController();
-  final _schoolController = TextEditingController(); 
+  final _townController = TextEditingController(); 
   final _placeOfBirth = TextEditingController();  
   final _motherMaiden = TextEditingController();
   final _residentialAddress = TextEditingController();
@@ -66,9 +66,9 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   VerifiedProfile? _profile;
 
   // ========== CONFIG ==========
-  static const String VERIFY_API_URL = "";
+  static const String VERIFY_API_URL = 
   
-      // "https://nin-proxy-1.onrender.com/checkSandboxNin"; // your NIN API/proxy
+      "https://nin-proxy-1.onrender.com/checkNin"; // your NIN API/proxy
   static const String SUBMIT_SHEET_URL = 
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================
@@ -77,8 +77,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   void dispose() {
     _ninController.dispose(); 
     _addressController.dispose(); 
-    _townController.dispose();
-    _schoolController.dispose();
+    _townController.dispose(); 
     super.dispose();
   }
 
@@ -382,9 +381,7 @@ log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toS
                               _profile!.dateOfBirth,
                             ),
                           if (_profile != null)
-                            _lockedField("Gender", _profile!.gender),
-                          if (_profile != null)
-                            _lockedField("Email", _profile!.email),
+                            _lockedField("Gender", _profile!.gender), 
                           if (_profile != null)
                             _lockedField("Phone Number", _profile!.mobile),
                           if (_profile != null)
@@ -396,7 +393,18 @@ log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toS
                               "State of Origin",
                               _profile!.birthState,
                             ),
+                          if (_profile != null)
+ _editableField(
+                            "Email",
+                          _profile!.email!.isEmpty ? _emailController  : TextEditingController(text:  _profile!.email),
+                            validator:
+                                (v) =>
+                                    v == null || v.isEmpty
+                                        ? "Email is required"
+                                        : null,
+                          ),
                             const Divider(),
+ 
                           _editableField(
                             "Address",
                             _addressController,
@@ -414,16 +422,7 @@ log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toS
                                     v == null || v.isEmpty
                                         ? "Town is required"
                                         : null,
-                          ),
-                          _editableField(
-                            "Name of School",
-                            _schoolController,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "School is required"
-                                        : null,
-                          ),
+                          ), 
                           const Divider(),
                           _editableField(
                             "Place of Birth",
@@ -641,11 +640,11 @@ class VerifiedProfile {
       firstName: json["firstName"] ?? "N/A",
       middleName: json["middleName"] ?? "N/A",
       birthLGA: json['address']["lga"] ?? "N/A",
-      birthState: json['address']["Niger"] ?? "N/A",
+      birthState: json['address']["state"] ?? "N/A",
       email: json["email"] ?? "N/A",
       mobile: json["mobile"] ?? "N/A",
       lastName: json['lastName'] ?? "N/A",
-      dateOfBirth: json["date0fBirth"] ?? "N/A",
+      dateOfBirth: json["dateOfBirth"] ?? "N/A",
       gender: json["gender"] ?? "N/A",
       verified:
           json['allValidationPassed'] == true ||
