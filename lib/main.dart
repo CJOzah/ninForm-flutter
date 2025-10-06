@@ -38,18 +38,11 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   final _ninFormKey = GlobalKey<FormState>();
   final _detailsFormKey = GlobalKey<FormState>();
 
-  final _ninController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _lgaController = TextEditingController();
+  final _ninController = TextEditingController(); 
+  final _addressController = TextEditingController(); 
   final _townController = TextEditingController();
-  final _schoolController = TextEditingController();
-  final _middleName = TextEditingController();
-  final _placeOfBirth = TextEditingController();
-  final _lgaOfBirth = TextEditingController();
-  final _lgaOfOrigin = TextEditingController();
-  final _stateOfOrigin = TextEditingController();
+  final _schoolController = TextEditingController(); 
+  final _placeOfBirth = TextEditingController();  
   final _motherMaiden = TextEditingController();
   final _residentialAddress = TextEditingController();
   final _hostelAddress = TextEditingController();
@@ -73,19 +66,17 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   VerifiedProfile? _profile;
 
   // ========== CONFIG ==========
-  static const String VERIFY_API_URL =
-      "https://api.sandbox.youverify.co/v2/api/identity/ng/nin"; // your NIN API/proxy
-  static const String SUBMIT_SHEET_URL =
+  static const String VERIFY_API_URL = "";
+  
+      // "https://nin-proxy-1.onrender.com/checkSandboxNin"; // your NIN API/proxy
+  static const String SUBMIT_SHEET_URL = 
       "https://nin-proxy-1.onrender.com/submit"; // your Apps Script endpoint
   // ============================
 
   @override
   void dispose() {
-    _ninController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _lgaController.dispose();
+    _ninController.dispose(); 
+    _addressController.dispose(); 
     _townController.dispose();
     _schoolController.dispose();
     super.dispose();
@@ -119,8 +110,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
         // 🔹 Mock response for demo
         await Future.delayed(const Duration(seconds: 1));
         setState(() {
-          _profile = VerifiedProfile(
-            nin: nin,
+          _profile = VerifiedProfile( 
             firstName: "John",
             lastName: "Doe",
             dateOfBirth: "1990-01-01",
@@ -142,7 +132,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
 
       final resp = await http.post(
         Uri.parse(VERIFY_API_URL),
-        headers: {"Content-Type": "application/json", "token": apiKey!},
+        headers: {"Content-Type": "application/json", },
         body: jsonEncode({
           "id": nin,
           "premiumNin": true,
@@ -155,19 +145,19 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
       }
       log("NIN res ${resp.body}");
 
-      final data = jsonDecode(resp.body);
+      final data = jsonDecode(resp.body)['data'];
       setState(() {
-        if (VerifiedProfile.fromJson(
-              data,
-            ).birthState!.toLowerCase().contains("delta") ==
-            false) {
-          _loading = false;
+        // if (VerifiedProfile.fromJson(
+        //       data,
+        //     ).birthState!.toLowerCase().contains("delta") ==
+        //     false) {
+        //   _loading = false;
 
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("You do not qualify")));
-          return;
-        }
+        //   ScaffoldMessenger.of(
+        //     context,
+        //   ).showSnackBar(SnackBar(content: Text("You do not qualify")));
+        //   return;
+        // }
         _profile = VerifiedProfile.fromJson(data);
 
         _loading = false;
@@ -207,14 +197,13 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
         "firstName": _profile!.firstName,
         "middleName": _profile!.middleName,
         "lastName": _profile!.lastName,
-        "email": _emailController.text,
-        "phone": _phoneController.text,
+        "email": _profile!.email,
+        "phone": _profile!.mobile,
         "dateOfBirth": _profile!.dateOfBirth,
         "gender": _profile!.gender,
         "placeOfBirth": _placeOfBirth.text,
-        "lgaOfBirth": _lgaOfBirth.text,
-        "lgaOfOrigin": _lgaOfOrigin.text,
-        "stateOfOrigin": _stateOfOrigin.text,
+        "lgaOfOrigin": _profile!.birthLGA, 
+        "stateOfOrigin": _profile!.birthState,
         "motherMaidenName": _motherMaiden.text,
         "residentialAddress": _residentialAddress.text,
         "hostelAddress": _hostelAddress.text,
@@ -254,6 +243,8 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                 : null,
       };
 
+
+log("Payload size: ${(utf8.encode(jsonEncode(payload)).length / 1024 / 1024).toStringAsFixed(2)} MB");
       final resp = await http.post(
         Uri.parse("$SUBMIT_SHEET_URL"),
         headers: {"Content-Type": "application/json"},
@@ -300,6 +291,8 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
 
   @override
   Widget build(BuildContext context) {
+
+      log("NIN res ${_profile?.firstName}");
     return Scaffold(
       appBar: AppBar(title: const Text("NIN Verification")),
       body: Center(
@@ -379,25 +372,31 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                       key: _detailsFormKey,
                       child: Column(
                         children: [
-                          if (_profile != null) ...[
-                            _lockedField("First Name", _profile!.firstName),
+                          if (_profile != null)
+                            _lockedField("First Name", _profile!.firstName), 
+                          if (_profile != null)
                             _lockedField("Last Name", _profile!.lastName),
+                          if (_profile != null)
                             _lockedField(
                               "Date of Birth",
                               _profile!.dateOfBirth,
                             ),
+                          if (_profile != null)
                             _lockedField("Gender", _profile!.gender),
+                          if (_profile != null)
                             _lockedField("Email", _profile!.email),
+                          if (_profile != null)
                             _lockedField("Phone Number", _profile!.mobile),
-                            // 🔹 Other editable fields
+                          if (_profile != null)
                             _lockedField("Middle Name", _profile!.middleName),
-                            _lockedField("LGA of Birth", _profile!.birthLGA),
+                          if (_profile != null)
+                            _lockedField("LGA of Origin", _profile!.birthLGA),
+                          if (_profile != null)
                             _lockedField(
                               "State of Origin",
                               _profile!.birthState,
                             ),
                             const Divider(),
-                          ],
                           _editableField(
                             "Address",
                             _addressController,
@@ -434,16 +433,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
                                     v == null || v.isEmpty
                                         ? "Place of Birth is required"
                                         : null,
-                          ),
-                          _editableField(
-                            "LGA of Origin",
-                            _lgaOfOrigin,
-                            validator:
-                                (v) =>
-                                    v == null || v.isEmpty
-                                        ? "LGA of Origin is required"
-                                        : null,
-                          ),
+                          ), 
                           _editableField(
                             "Mother’s Maiden Name",
                             _motherMaiden,
@@ -621,8 +611,7 @@ class _NinVerifierPageState extends State<NinVerifierPage> {
   }
 }
 
-class VerifiedProfile {
-  final String? nin;
+class VerifiedProfile { 
   final String? firstName;
   final String? middleName;
   final String? lastName;
@@ -634,8 +623,7 @@ class VerifiedProfile {
   final String? birthLGA;
   final bool verified;
 
-  VerifiedProfile({
-    this.nin,
+  VerifiedProfile({ 
     this.firstName,
     this.mobile,
     this.email,
@@ -649,17 +637,16 @@ class VerifiedProfile {
   });
 
   factory VerifiedProfile.fromJson(Map<String, dynamic> json) {
-    return VerifiedProfile(
-      nin: json["idNumber"]?.toString(),
-      firstName: json["firstName"]?.toString(),
-      middleName: json["middleName"]?.toString(),
-      birthLGA: json["birthLGA"]?.toString(),
-      birthState: json["birthState"]?.toString(),
-      email: json["email"]?.toString(),
-      mobile: json["mobile"]?.toString(),
-      lastName: json['lastName']?.toString(),
-      dateOfBirth: json["date0fBirth"]?.toString(),
-      gender: json["gender"]?.toString(),
+    return VerifiedProfile( 
+      firstName: json["firstName"] ?? "N/A",
+      middleName: json["middleName"] ?? "N/A",
+      birthLGA: json['address']["lga"] ?? "N/A",
+      birthState: json['address']["Niger"] ?? "N/A",
+      email: json["email"] ?? "N/A",
+      mobile: json["mobile"] ?? "N/A",
+      lastName: json['lastName'] ?? "N/A",
+      dateOfBirth: json["date0fBirth"] ?? "N/A",
+      gender: json["gender"] ?? "N/A",
       verified:
           json['allValidationPassed'] == true ||
           json['status'] == "allValidationPassed",
@@ -667,8 +654,7 @@ class VerifiedProfile {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      "nin": nin,
+    return { 
       "firstName": firstName,
       "lastName": lastName,
       "dateOfBirth": dateOfBirth,

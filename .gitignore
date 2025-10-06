@@ -34,7 +34,9 @@ migrate_working_dir/
 /build/
 # Environment variables
 assets/.env
+.env
 
+nin-proxy/nin-proxy/.env
 # Symbolication related
 app.*.symbols
 
